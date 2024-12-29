@@ -3,14 +3,13 @@ package main
 import (
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"strconv"
 )
 
 // Define a home handler function which writes a byte slice containing
 // "Hello from Snippetbox" as the response body.
-func home(w http.ResponseWriter, r *http.Request) {
+func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	// Initialize a slice containing the paths to the two files. It's important
 	// to note that the file containing our base template must be the *first*
 	// file in the slice.
@@ -20,28 +19,25 @@ func home(w http.ResponseWriter, r *http.Request) {
 	// of the files slice as variadic argument
 	ts, err := template.ParseFiles(files...)
 	if err != nil {
-		log.Print(err.Error())
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		app.serverError(w, r, err)
 	}
 	// Use the ExecuteTemplate() method to write the content of the "base"
 	// template as the response body.
 	err = ts.ExecuteTemplate(w,"base", nil)
 	if err != nil {
-		log.Print(err.Error())
-		http.Error(w,
-		"Internal Server Error", http.StatusInternalServerError)
+		app.serverError(w, r, err)
 	}
 }
 
 // Add a snippetView handler function.
-func snippetView(w http.ResponseWriter, r *http.Request) {
+func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 	// Extract the value of the id wildcard from the request using r.PathValue()
 	// and try to convert it to an integer using the strconv.Atoi() function. If
 	// it can't be converted to an integer, or the value is less than 1, we
 	// return a 404 page not found response.
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil || id < 1 {
+		app.logger.Error(err.Error())
 		http.NotFound(w, r)
 		return
 	}
@@ -49,7 +45,7 @@ func snippetView(w http.ResponseWriter, r *http.Request) {
 }
 
 // Add a snippetCreate handler function.
-func snippetCreate(w http.ResponseWriter, r *http.Request) {
+func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
 	// Set a new cache-control header. If an existing "Cache-Control" header exists
 	// it will be overwritten.
 	w.Header().Set("Cache-Control","public, max-age=31536000")
@@ -66,7 +62,7 @@ func snippetCreate(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Display a form for creating a new snippet..."))
 }
 
-func snippetCreatePost(w http.ResponseWriter, r *http.Request){
+func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request){
 	// Use the w.WriteHeader() method to send a 201 status code.
 	w.WriteHeader(http.StatusCreated)
 	// Then w.Write() method to write the response body as normal.
